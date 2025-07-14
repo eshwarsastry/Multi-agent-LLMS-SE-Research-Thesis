@@ -1,0 +1,8 @@
+# SSL Certificate Bundle (if needed)
+# REQUESTS_CA_BUNDLE=/path/to/your/certificate.pem
+
+# CodeLlama Configuration (Local Ollama)
+OLLAMA_BASE_URL=http://localhost:11434/v1
+
+# Default Configuration
+DEFAULT_LLM_CONFIG=codellama 

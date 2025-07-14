@@ -1,0 +1,14 @@
+# Gemini Configuration
+GEMINI_API_KEY=your_gemini_api_key_here
+GEMINI_BASE_URL=https://gemini.googleapis.com/v1alpha2
+
+# CodeLlama Configuration (Local Ollama)
+OLLAMA_BASE_URL=http://localhost:11434/v1
+
+# Qwen Configuration
+QWEN_API_KEY=null
+QWEN_BASE_URL=https://tesla.iese.de:8443/qwen_25_coder_35b_instruct/v1
+REQUESTS_CA_BUNDLE=./certs/certificate.pemtesla-iese-de-zertifikatskette.pem
+
+# Default Configuration
+DEFAULT_LLM_CONFIG=codellama 
