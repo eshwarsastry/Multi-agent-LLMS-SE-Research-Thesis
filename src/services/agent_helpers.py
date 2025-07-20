@@ -1,3 +1,4 @@
+import json
 import os
 from datetime import datetime
 
@@ -8,18 +9,33 @@ def extract_value(key, messages):
             return msg["content"].split(key)[1].strip()
     return ""
 
-def save_requirements_to_file(requirements_content, filename="requirements.md"):
-    """Save requirements to a markdown file"""
+def save_output_to_file(output_content, filename, output_dir):
+    """Save the agent output contents of the agent to a markdown file in the specified directory"""
     # Create output directory if it does not exist
-    output_dir = "system output/re docs"
     os.makedirs(output_dir, exist_ok=True)
     
     # Create filename with timestamp
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filepath = os.path.join(output_dir, f"{filename}_{timestamp}.md")
     
-    # Write requirements to file
+    # Write the agent output contents to the file
     with open(filepath, 'w', encoding='utf-8') as f:
-        f.write(requirements_content)
+        f.write(output_content)
     
     return filepath 
+
+def extract_relevant_outputs(messages, agent_patterns):
+    outputs = {}
+    for agent, pattern in agent_patterns.items():
+        for msg in reversed(messages):
+            if msg.get("name") == agent and all(p in msg["content"] for p in pattern):
+                outputs[agent] = msg["content"]
+                break
+    return outputs
+
+def load_input_from_file(file_path):
+    with open(file_path, 'r') as f:
+        content = json.load(f)
+
+    return content
+
