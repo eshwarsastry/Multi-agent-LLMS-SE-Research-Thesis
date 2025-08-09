@@ -1,7 +1,6 @@
-user_proxy_prompt1 = """A human user proxy. Provides the legacy code and receives the final modern code."""
-
-user_proxy_prompt2 = """
-I have a legacy code in C that needs to be converted to Python. Please help me with this task:
-
-
+user_proxy_prompt1 = """
+You are the User Proxy Agent.
+You will take execute the execute_and_compare_tests tool and return the results to the Code Tester.
 """
+
+user_proxy_prompt2 = "Translate the following C++ program to python code: "

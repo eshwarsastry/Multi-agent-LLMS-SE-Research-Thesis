@@ -1,5 +1,7 @@
 import os
-
+from typing import Dict
+from typing_extensions import Annotated
+ 
 # Load the configuration loader service for the agents.
 from services.config_loader import load_config
 
@@ -15,21 +17,23 @@ from prompts.user_proxy_agent_prompts import user_proxy_prompt1, user_proxy_prom
 from services.agent_workflow import WorkflowController
 from services.agent_speaker_selector import SpeakerSelector
 from services.agent_factory import AgentFactory
-from services.output_testing import run_cpp_code, run_python_code
-from services.agent_helpers import extract_relevant_outputs, load_input_from_file, save_output_to_file
+from services.agent_helpers import extract_relevant_outputs, save_output_to_file, load_input_from_file
+from services.output_testing import run_and_compare_tests
 
 # Load the configuration file path of the agents.
 base_dir = os.path.dirname(os.path.abspath(__file__))
 config_path = os.path.join(base_dir, "llm_config.json")
 
-# Load the default configuration for the agents.
-config_list = load_config(config_path)
+# Load all LLM configurations for the agents.
+llm_configs = load_config(config_path)
 
-# Create an agent factory.
-agent_factory = AgentFactory(config_list, default_temp=0.5)
+# Create an agent factory with mistral as default, but Qwen for Code_Translator
+agent_factory = AgentFactory(llm_configs, default_model="mistral", default_temp=0.5)
+
+# Set temperature for Qwen model (optional)
+agent_factory.set_model_temperature("qwen_25_coder_35b_instruct", 0.1)  # Lower temperature for more deterministic output
 
 # Create the agents using the agent factory.
-
 # Requirement Engineer
 requirement_engineer = agent_factory.create_assistant(
     name="Requirement_Engineer",
@@ -37,28 +41,33 @@ requirement_engineer = agent_factory.create_assistant(
     tools=[]
 )
 
-# Code Translator
+# Code Translator (Qwen)
+# Override temperature for Qwen
+if "qwen_25_coder_35b_instruct" in llm_configs:
+    llm_configs["qwen_25_coder_35b_instruct"]["temperature"] = 0.1  # Set to desired temperature
+
 code_translator = agent_factory.create_assistant(
     name="Code_Translator",
     system_message=translator_prompt_1,
-    tools=[]
+    tools=[],
+    llm_model="qwen_25_coder_35b_instruct"
 )
 
-# Code Validator
+# Code Validator (Mistral)
 code_validator = agent_factory.create_assistant(
     name="Code_Validator",
     system_message=validator_prompt_1,
     tools=[]
 )
 
-# Code Tester
+# Code Tester (Mistral)
 code_tester = agent_factory.create_assistant(
     name="Code_Tester",
     system_message=code_tester_prompt_1,
     tools=[]
 )
 
-# Critic
+# Critic (Mistral)
 critic = agent_factory.create_assistant(
     name="Critic",
     system_message=critic_prompt_1,
@@ -71,44 +80,60 @@ user_proxy = agent_factory.create_user_proxy(
     system_messages=[user_proxy_prompt1],
 )
 
-
 # Register the tool signature with the assistant agent.
-code_tester.register_for_llm(name="run_cpp_code", description="Run C++ code")(run_cpp_code)
-code_tester.register_for_llm(name="run_python_code", description="Run Python code")(run_python_code)
-
-# Register the tool function with the user proxy agent.
-user_proxy.register_for_execution(name="run_cpp_code")(run_cpp_code)
-user_proxy.register_for_execution(name="run_python_code")(run_python_code)
-# Register all relevant functions to this single proxy
-"""user_proxy.register_function(
-    function_map={
-        "run_cpp_code": run_cpp_code,
-        "run_python_code": run_python_code,
-        # Also include your validation functions here if they use the same proxy
-        # "validate_python_syntax": validate_python_syntax,
-        # "validate_cpp_syntax": validate_cpp_syntax,
-    }
-)"""
-
-"""
-# Register the custom reply function for the Tester_Agent's interaction with the consolidated proxy
-user_proxy.register_auto_reply_function(
-    code_tester,
-    reply_func=custom_tester_executor_reply
-) """
-
+print(" Registering functions with Code_Tester agent...")
+@user_proxy.register_for_execution()
+@code_tester.register_for_llm(description="Run given test cases on both codes and return pass/fail summary")
+def execute_and_compare_tests(
+    legacy_code: Annotated[str, "C++ program string provided"],
+    translated_code: Annotated[str, "Python program string translated"],
+    cpp_tests: Annotated[str, "C++ test methods"],
+    py_tests: Annotated[str, "Python test methods"],
+) -> Dict:
+    """ Execute test cases on both legacy and translated code, returning pass/fail summary.
+    """ 
+    compute_result = run_and_compare_tests(
+        legacy_code=legacy_code,
+        translated_code=translated_code,
+        cpp_tests=cpp_tests,
+        py_tests=py_tests
+    )
+    return compute_result
 # Define phases for the workflow
+# Define workflow phases with retry conditions and optional parallel agents
 PHASES = {
-    "REQUIREMENTS": requirement_engineer,
-    "TRANSLATION": code_translator,
-    "Validation": code_validator, #Both tester and validator agents work in parallel
-    "TESTING": code_tester,
-    "REVIEW": critic 
+    "REQUIREMENTS": {
+        "agents": [requirement_engineer],
+        "retry_on": ["missing requirements"]
+    },
+    "TRANSLATION": {
+        "agents": [code_translator],
+        "retry_on": ["syntax error", "test fail", "low score"]
+    },
+    "VALIDATION": {
+        "agents": [code_validator],
+        "retry_on": ["syntax error"]
+    },
+    "TESTING": {
+        # Example of parallel phase with tester and critic
+        "agents": [code_tester, critic],
+        "retry_on": ["output mismatch"]
+    },
+    "REVIEW": {
+        "agents": [critic],
+        "retry_on": ["low score"]
+    },
+    "COMPLETE": {
+        "agents": [],
+        "retry_on": []
+    }
 }
 
+# Explicit phase order
+PHASE_ORDER = ["REQUIREMENTS", "TRANSLATION", "VALIDATION", "TESTING", "REVIEW", "COMPLETE"]
 
 # Create workflow controller
-workflow_controller = WorkflowController(PHASES)
+workflow_controller = WorkflowController(PHASES, PHASE_ORDER)
 
 # Create speaker selector
 speaker_selector = SpeakerSelector(workflow_controller, requirement_engineer)
@@ -122,29 +147,28 @@ groupchat = agent_factory.create_groupchat(
 
 # Create group chat manager
 group_chat_manager = agent_factory.create_group_manager(
-    groupchat=groupchat,
-    llm_config={"config_list": config_list}
+    groupchat=groupchat
 )
 
-# Get the directory containing this script
 base_dir = os.path.dirname(os.path.abspath(__file__))
-inputs_dir = os.path.join(base_dir, "inputs")
+project_root = os.path.dirname(base_dir)
+inputs_dir = os.path.join(project_root, "src\\inputs")
 
-# List all files in the inputs directory
-input_files = [f for f in os.listdir(inputs_dir) if os.path.isfile(os.path.join(inputs_dir, f))]
+# List all files in inputs
+input_files = [
+    f for f in os.listdir(inputs_dir)
+    if os.path.isfile(os.path.join(inputs_dir, f))
+]
 
 # Select the first input file
 if input_files:
     input_file_path = os.path.join(inputs_dir, input_files[0])
-    # Read the C++ code from the file
-    with open(input_file_path, 'r', encoding='utf-8') as f:
-        cpp_code = f.read()
-    
-
+    # Load the C++ code from the file using helper
+    cpp_code = load_input_from_file(input_file_path)
     initiate_chat_message = user_proxy_prompt2 + "\n" + cpp_code
     user_proxy.initiate_chat(
         group_chat_manager,
-        message= initiate_chat_message
+        message=initiate_chat_message
     )
 
     # After chat is done, extract and save only the final relevant outputs
@@ -160,9 +184,9 @@ if input_files:
 
     agent_patterns = {
         "Requirement_Engineer": ["Title:", "Requirements:"],
-        "Code_Translator": ["Title:", "Translated Code:"],
-        "Code_Validator": ["Syntax", "Semantic", "Error"],  
-        "Code_Tester": ["Overall Test Summary"],  
+        "Code_Translator": ["Translated Code:", "Code", "python"],
+        "Code_Validator": ["Syntax", "Semantic", "Error", "Validation Report"],  
+        "Code_Tester": ["Overall Test Summary", "Test"],  
         "Critic": ["Score:", "Critique:", "Suggestions:"]
     }
 
@@ -173,7 +197,6 @@ if input_files:
             save_output_to_file(content, name.lower(), "output")
         else:
             print(f"No relevant output found for agent: {name}")
-
 
 else:
     print("No input files found in the inputs directory.Cannot initiate the chat.")
