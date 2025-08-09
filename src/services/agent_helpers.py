@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from datetime import datetime
 
 def extract_value(key, messages):
@@ -35,10 +36,40 @@ def extract_relevant_outputs(messages, agent_patterns):
 
 def load_input_from_file(file_path, key=None):
     """
-    Load the value for a given key from a JSON file. If no key is provided, return the whole content.
+    Read the contents of a file.
     """
     with open(file_path, 'r') as file:
         file_content = file.read()
 
     return file_content
 
+def read_json_file(file_path):
+	"""
+	Read the contents of a JSON file.
+	"""
+	with open(file_path, 'r', encoding='utf-8') as file:
+		file_json_content = json.load(file)
+
+	return file_json_content
+
+def get_last_python_code_block(chat_history):
+    """
+    Finds and returns the content of the last Python code block
+    in a list of chat messages using a regex match.
+    """
+    code_pattern = r'```(python|py|python3)\n(.*?)```'
+    
+    last_code = None
+    for message in chat_history:
+        content = message.get('content', '')
+        
+        # Find all matches in the current message
+        code_blocks = re.findall(code_pattern, content, re.DOTALL | re.IGNORECASE)
+        
+        # If any code blocks were found, update the 'last_code'
+        if code_blocks:
+            # The regex captures two groups: the tag and the code.
+            # We want the code, which is the second group.
+            last_code = code_blocks[-1][1]
+            
+    return last_code

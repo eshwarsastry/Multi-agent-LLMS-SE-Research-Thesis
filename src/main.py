@@ -11,7 +11,7 @@ from prompts.translator_agent_prompts import translator_prompt_1
 from prompts.validator_agent_prompts import validator_prompt_1
 from prompts.tester_agent_prompts import code_tester_prompt_1
 from prompts.critic_agent_prompts import critic_prompt_1
-from prompts.user_proxy_agent_prompts import user_proxy_prompt1, user_proxy_prompt2
+from prompts.user_proxy_agent_prompts import user_proxy_prompt1, user_proxy_message
 
 # Load the services for the agents.
 from services.agent_workflow import WorkflowController
@@ -165,7 +165,7 @@ if input_files:
     input_file_path = os.path.join(inputs_dir, input_files[0])
     # Load the C++ code from the file using helper
     cpp_code = load_input_from_file(input_file_path)
-    initiate_chat_message = user_proxy_prompt2 + "\n" + cpp_code
+    initiate_chat_message = user_proxy_message + "\n" + cpp_code
     user_proxy.initiate_chat(
         group_chat_manager,
         message=initiate_chat_message
