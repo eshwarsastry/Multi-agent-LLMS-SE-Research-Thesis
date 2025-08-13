@@ -10,30 +10,33 @@ def extract_value(key, messages):
             return msg["content"].split(key)[1].strip()
     return ""
 
-def save_output_to_file(output_content, filename, output_dir):
-    """Save the agent output contents of the agent to a markdown file in the specified directory"""
-    # Create output directory if it does not exist
-    os.makedirs(output_dir, exist_ok=True)
-    
-    # Create filename with timestamp
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filepath = os.path.join(output_dir, f"{filename}_{timestamp}.md")
-    
-    # Write the agent output contents to the file
-    with open(filepath, 'w', encoding='utf-8') as f:
-        f.write(output_content)
-    
-    return filepath 
+def save_output_to_json_file(output_file_path, output_content):
+    with open(output_file_path, 'w', encoding='utf-8') as f:
+        json.dump(output_content, f, ensure_ascii=False, indent=2)
 
-def extract_relevant_outputs(messages, agent_patterns):
+def extract_relevant_outputs(chat_history, agent_patterns):
+    """
+    Finds and returns the content of the agent messages
+    that match the specified patterns
+    """
     outputs = {}
-    for agent, pattern in agent_patterns.items():
-        for msg in reversed(messages):
-            if msg.get("name") == agent and all(p in msg["content"] for p in pattern):
-                outputs[agent] = msg["content"]
-                break
+    for agent, regex_patterns in agent_patterns.items():
+        # Ensure regex_patterns is a list
+        if not isinstance(regex_patterns, list):
+            regex_patterns = [regex_patterns]
+        matches = []
+        for message in chat_history:
+            content = message.get('content', '')
+            for pattern in regex_patterns:
+                found = re.findall(pattern, content, re.DOTALL | re.IGNORECASE)
+                # Special handling for Code_Translator: extract only the code (second group)
+                if agent == "Code_Translator" and found and isinstance(found[0], tuple):
+                    matches.extend([code for (_, code) in found])
+                else:
+                    matches.extend(found)
+        outputs[agent] = matches
     return outputs
-
+    
 def load_input_from_file(file_path, key=None):
     """
     Read the contents of a file.
@@ -51,25 +54,3 @@ def read_json_file(file_path):
 		file_json_content = json.load(file)
 
 	return file_json_content
-
-def get_last_python_code_block(chat_history):
-    """
-    Finds and returns the content of the last Python code block
-    in a list of chat messages using a regex match.
-    """
-    code_pattern = r'```(python|py|python3)\n(.*?)```'
-    
-    last_code = None
-    for message in chat_history:
-        content = message.get('content', '')
-        
-        # Find all matches in the current message
-        code_blocks = re.findall(code_pattern, content, re.DOTALL | re.IGNORECASE)
-        
-        # If any code blocks were found, update the 'last_code'
-        if code_blocks:
-            # The regex captures two groups: the tag and the code.
-            # We want the code, which is the second group.
-            last_code = code_blocks[-1][1]
-            
-    return last_code

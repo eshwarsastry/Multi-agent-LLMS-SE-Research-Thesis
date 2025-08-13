@@ -1,7 +1,5 @@
 from codebleu import calc_codebleu
 
-from agent_helpers import read_json_file
-
 def evaluate_codebleu_for_pairs(ground_truth, generated_code, lang="python", weights=(0.25, 0.25, 0.25, 0.25), tokenizer=None):
 	"""
 	For each key present in both ground_truth and generated_code, evaluates CodeBLEU and returns a dict of results.
@@ -31,9 +29,4 @@ def print_codebleu_results(results):
 	avg_score = total_score / count if count > 0 else 0
 	print(f"\nAverage CodeBLEU: {avg_score}") 
 
-ground_truth = read_json_file('D:/TUK/Master_Thesis/Multi-agent-LLMS-SE-Research-Thesis/src/inputs/ground_truth.json')
-generated_code = read_json_file('D:/TUK/Master_Thesis/Multi-agent-LLMS-SE-Research-Thesis/src/outputs/generated_python_code.json')
 
-results = evaluate_codebleu_for_pairs(ground_truth, generated_code, lang="python", weights=(0.25, 0.25, 0.25, 0.25), tokenizer=None)
-
-print_codebleu_results(results)
