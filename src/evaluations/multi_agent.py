@@ -3,18 +3,19 @@ from pathlib import Path
 from typing import Dict
 from typing_extensions import Annotated
 
-from services.result_evaluation import evaluate_codebleu_for_pairs, print_codebleu_results
+from ..services.output_validation import validate_python_syntax
+from ..services.result_evaluation import evaluate_codebleu_for_pairs, print_codebleu_results
  
 # Load the configuration loader service for the agents.
 from ..services.config_loader import load_config
 
 # Load the prompts for the agents.
 from ..prompts.re_agent_prompts import re_prompt_1
-from ..prompts.translator_agent_prompts import translator_prompt_1
+from ..prompts.translator_agent_prompts import translator_prompt_2
 from ..prompts.validator_agent_prompts import validator_prompt_1
 from ..prompts.tester_agent_prompts import code_tester_prompt_1
 from ..prompts.critic_agent_prompts import critic_prompt_1
-from ..prompts.user_proxy_agent_prompts import user_proxy_prompt1, user_proxy_message
+from ..prompts.user_proxy_agent_prompts import user_proxy_prompt1
 
 # Load the services for the agents.
 from ..services.agent_workflow import WorkflowController
@@ -32,18 +33,19 @@ critic_reviews = {}
 
 PHASE_ORDER = ["REQUIREMENTS", "TRANSLATION", "VALIDATION", "TESTING", "REVIEW", "COMPLETE"]
 agent_patterns = {
-        "Requirement_Engineer": [r"Title:\s*.*"],
-        "Code_Translator": [r"```(python|py|python3)\n(.*?)```"],
-        "Code_Validator": [r"Syntax", r"Semantic", r"Error", r"Validation Report"],
-        "Code_Tester": [r"Overall Test Summary", r"Test"],
-        "Critic": [r"Score:?\s*\d+", r"Critique:?\s*.*", r"Suggestions?:?\s*.*"]
-    }
+    "Requirement_Engineer": r"Title:\s*.*",
+    "Code_Translator": r"```(python|py|python3)\n(.*?)```",
+    "Code_Validator": r"(Syntax|Semantic|Error|Validation Report)",
+    "Code_Tester": r"(Overall Test Summary|Test)",
+    "Critic": r"(Score:?\s*\d+|Critique:?\s*.*|Suggestions?:?\s*.*)"
+}
 
 output_file_path = 'D:/TUK/Master_Thesis/Multi-agent-LLMS-SE-Research-Thesis/src/outputs/multi_agent_results/generated_python_code.json'
 requirements_file_path = 'D:/TUK/Master_Thesis/Multi-agent-LLMS-SE-Research-Thesis/src/outputs/multi_agent_results/generated_requirements.json'
 critic_reviews_file_path = 'D:/TUK/Master_Thesis/Multi-agent-LLMS-SE-Research-Thesis/src/outputs/multi_agent_results/generated_critic.json'
 tests_file_path = 'D:/TUK/Master_Thesis/Multi-agent-LLMS-SE-Research-Thesis/src/outputs/multi_agent_results/generated_tester.json' 
 validations_file_path = 'D:/TUK/Master_Thesis/Multi-agent-LLMS-SE-Research-Thesis/src/outputs/multi_agent_results/generated_validator.json'
+
 # Load the configuration file path of the agents.
 current_dir = Path(__file__).resolve().parent
 base_dir = current_dir.parent
@@ -63,18 +65,19 @@ agent_factory.set_model_temperature("qwen_25_coder_35b_instruct", 0.1)  # Lower 
 requirement_engineer = agent_factory.create_assistant(
     name="Requirement_Engineer",
     system_message=re_prompt_1,
-    tools=[]
+    tools=[],
+    llm_model="qwen_25_coder_35b_instruct"
 )
 
 # Code Translator (Qwen)
 code_translator = agent_factory.create_assistant(
     name="Code_Translator",
-    system_message=translator_prompt_1,
+    system_message=translator_prompt_2,
     tools=[],
     llm_model="qwen_25_coder_35b_instruct"
 )
 
-# Code Validator (Mistral)
+# Code Validator (Llama)
 code_validator = agent_factory.create_assistant(
     name="Code_Validator",
     system_message=validator_prompt_1,
@@ -85,14 +88,16 @@ code_validator = agent_factory.create_assistant(
 code_tester = agent_factory.create_assistant(
     name="Code_Tester",
     system_message=code_tester_prompt_1,
-    tools=[]
+    tools=[],
+    llm_model="llama_31_70b_instruct"
 )
 
 # Critic (Mistral)
 critic = agent_factory.create_assistant(
     name="Critic",
     system_message=critic_prompt_1,
-    tools=[]
+    tools=[],
+    llm_model="qwen_25_coder_35b_instruct"
 )
 
 # User Proxy Agent
@@ -100,8 +105,20 @@ user_proxy = agent_factory.create_user_proxy(
     name="User_Proxy",
     system_messages=[user_proxy_prompt1],
 )
+# Register function to validator agent.
+@user_proxy.register_for_execution()
+@code_validator.register_for_llm(description="Validate the syntax and semantics of the translated code and check if it compiles.")
+def validate_translated_code(
+    translated_code: Annotated[str, "Python program string translated"]
+) -> Dict:
+    """ Validate the translated Python code to check if it compiles.
+    """
+    validation_result = validate_python_syntax(
+        translated_code=translated_code
+    )
+    return validation_result
 
-# Register the tool signature with the assistant agent.
+# Register function with Code_Tester agent.
 print(" Registering functions with Code_Tester agent...")
 @user_proxy.register_for_execution()
 @code_tester.register_for_llm(description="Run given test cases on both codes and return pass/fail summary")
@@ -152,7 +169,7 @@ PHASES = {
 
 input_cpp_codes = read_json_file('D:/TUK/Master_Thesis/Multi-agent-LLMS-SE-Research-Thesis/src/inputs/input_program.json')
 
-for key, cpp_code in list(input_cpp_codes.items())[:10]:
+for key, cpp_code in list(input_cpp_codes.items())[:2]:
     print(f"Translating C++ code for key: {key}")
 
     workflow_controller = WorkflowController(PHASES, PHASE_ORDER)
@@ -161,7 +178,7 @@ for key, cpp_code in list(input_cpp_codes.items())[:10]:
     groupchat = agent_factory.create_groupchat(
         agents= [requirement_engineer, code_translator, code_validator, code_tester, critic],
         speaker_selector=speaker_selector.select_speaker,
-        max_round=4
+        max_round=10
     )
     
     group_chat_manager = agent_factory.create_group_manager(
