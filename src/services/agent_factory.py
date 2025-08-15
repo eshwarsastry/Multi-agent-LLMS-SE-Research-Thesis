@@ -38,7 +38,6 @@ class AgentFactory:
 
     def create_user_proxy(self, name: str, system_messages: list):
         def _is_term(msg):
-            # Accept dict or str; handle None content safely
             if isinstance(msg, dict):
                 content = msg.get("content")
             else:

@@ -1,3 +1,4 @@
 {
-  "AccessGatewayFilter": "Error"
+  "AccessGatewayFilter": "Validation Summary\n- Syntax Errors: None\n- Compilation Issues: None\n- Structural Problems: None",
+  "AreaCalculator": "Validation Summary\n- Syntax Errors: None\n- Compilation Issues: None\n- Structural Problems: None"
 }

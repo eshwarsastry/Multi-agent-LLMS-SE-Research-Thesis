@@ -1,8 +1,5 @@
 import ast
-import os
-import tempfile
 from typing import Dict
-from typing_extensions import Annotated
 
 from .output_testing import  find_gpp
 
@@ -13,7 +10,7 @@ def validate_python_syntax(
     translated_code: str
 ) -> Dict:
     """ 
-    Validate the translated Python code to check if it compiles.
+    Validate the translated Python code to check if it compiles without any errors.
     """
 
     print(f"\n [PYTHON SYNTAX VALIDATION] Validating Python syntax...")

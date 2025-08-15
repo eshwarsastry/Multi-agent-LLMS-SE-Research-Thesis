@@ -85,13 +85,13 @@ def _execute_command(command, input_data=""):
         returncode = -2
         print(f" UNEXPECTED ERROR: {e}")
 
-    print(f"🔍 [EXECUTION {execution_id}] Completed\n")
+    print(f"[EXECUTION {execution_id}] Completed\n")
     return stdout.strip(), stderr.strip(), returncode, success
 
 def run_cpp_code(code_string: str, input_data: str = "") -> dict:
     """
     Compiles and runs C++ code.
-    The Tester_Agent will call this function.
+    The Code_Tester agent will call this function.
     """
     print(f"\n [C++ EXECUTION] Starting C++ code execution...")
     print(f" Code length: {len(code_string)} characters")
@@ -184,7 +184,7 @@ def run_cpp_code(code_string: str, input_data: str = "") -> dict:
 def run_python_code(code_string: str, input_data: str = "") -> dict:
     """
     Runs Python code.
-    The Tester_Agent will call this function.
+    The Code_tester agent will call this function.
     """
     print(f"\n [PYTHON EXECUTION] Starting Python code execution...")
     print(f" Code length: {len(code_string)} characters")
@@ -251,7 +251,7 @@ def run_and_compare_tests(
     py_tests: str,
 ) -> Dict:
     """
-    Runtime test harness:
+    More info about this method:
     - Appends a single test at a time to each program
     - Runs C++ and Python separately
     - Compares outputs and errors

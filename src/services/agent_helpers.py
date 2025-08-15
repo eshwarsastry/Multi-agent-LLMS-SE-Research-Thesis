@@ -6,21 +6,16 @@ def extract_value(key, messages):
     """Helper function to extract values from messages using regex matching"""
     pattern = re.compile(rf"{key}\s*:\s*(.*)", re.IGNORECASE)
     for msg in reversed(messages):
-        # Support both dict and str
         content = msg["content"] if isinstance(msg, dict) and "content" in msg else str(msg)
         found = pattern.findall(content)
         if found:
             return found[0].strip()
     return ""
 
-def save_output_to_json_file(output_file_path, output_content):
-    with open(output_file_path, 'w', encoding='utf-8') as f:
-        json.dump(output_content, f, ensure_ascii=False, indent=2)
-
 def extract_relevant_outputs(chat_history, agent_patterns):
     """
     Finds and returns the content of the agent messages
-    that match the specified patterns
+    that match the specified patterns. Returns only the most recent match.
     """
     outputs = {}
     for agent, regex_patterns in agent_patterns.items():
@@ -29,8 +24,11 @@ def extract_relevant_outputs(chat_history, agent_patterns):
             regex_patterns = [regex_patterns]
         matches = []
         for message in chat_history:
-            # Support both dict and str
-            content = message.get('content', '') if isinstance(message, dict) and 'content' in message else str(message)
+            # Handle None messages
+            if message is None:
+                continue
+            # Support both dict and str, with None check
+            content = message.get('content', '') if isinstance(message, dict) and 'content' in message and message.get('content') is not None else str(message) if message is not None else ''
             for pattern in regex_patterns:
                 found = re.findall(pattern, content, re.DOTALL | re.IGNORECASE)
                 # Special handling for Code_Translator: extract only the code (second group)
@@ -38,17 +36,14 @@ def extract_relevant_outputs(chat_history, agent_patterns):
                     matches.extend([code for (_, code) in found])
                 else:
                     matches.extend(found)
-        outputs[agent] = matches
+        
+        # Return only the last match if any matches were found, otherwise empty list
+        outputs[agent] = [matches[-1]] if matches else []
     return outputs
-    
-def load_input_from_file(file_path, key=None):
-    """
-    Read the contents of a file.
-    """
-    with open(file_path, 'r') as file:
-        file_content = file.read()
 
-    return file_content
+def save_output_to_json_file(output_file_path, output_content):
+    with open(output_file_path, 'w', encoding='utf-8') as f:
+        json.dump(output_content, f, ensure_ascii=False, indent=2)
 
 def read_json_file(file_path):
 	"""

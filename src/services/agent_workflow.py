@@ -1,40 +1,43 @@
-import re
-
+from typing import Dict, List
 
 class WorkflowController:
-    def __init__(self, phases, phase_order):
-        self.PHASES = phases
-        self.PHASE_ORDER = phase_order
-        self.current_phase = phase_order[0]
-        self.phase_history = []
 
-    def _should_retry(self, phase, last_message):
-        """Check if last_message triggers retry based on phase's retry_on rules."""
-        retry_triggers = self.PHASES[phase]["retry_on"]
-        for trigger in retry_triggers:
-            if isinstance(last_message, dict):
-                # Direct dict key check
-                if trigger in last_message.get("error_type", ""):
-                    return True
-            elif isinstance(last_message, str):
-                if re.search(trigger, last_message, re.IGNORECASE):
-                    return True
-        return False
+    def __init__(
+        self,
+        phase_speakers: Dict[str, List[str]] | None = None,
+        phase_order: List[str] | None = None,
+    ):
 
-    def next_phase(self, last_message):
-        # Retry logic
-        if self._should_retry(self.current_phase, last_message):
-            return "TRANSLATION"
+        self.phase_speakers: Dict[str, List[str]] = phase_speakers or {}
 
-        # Move forward in sequence
-        current_idx = self.PHASE_ORDER.index(self.current_phase)
-        if current_idx < len(self.PHASE_ORDER) - 1:
-            return self.PHASE_ORDER[current_idx + 1]
-        return "COMPLETE"
+        self.phase_order: List[str] = phase_order or list(self.phase_speakers.keys())
+        self.current_phase = self.phase_order[0] if self.phase_order else "COMPLETE"
 
-    def update_phase(self, last_message):
-        new_phase = self.next_phase(last_message)
-        if new_phase != self.current_phase:
-            self.phase_history.append(self.current_phase)
-            self.current_phase = new_phase
-        return self.PHASES.get(self.current_phase, {}).get("agents", [])
+    def next_phase(self) -> str:
+        if self.current_phase not in self.phase_order:
+            self.current_phase = self.phase_order[0] if self.phase_order else "COMPLETE"
+            return self.current_phase
+        idx = self.phase_order.index(self.current_phase)
+        self.current_phase = (
+            self.phase_order[idx + 1] if idx < len(self.phase_order) - 1 else "COMPLETE"
+        )
+        return self.current_phase
+
+    def set_phase_speakers(self, mapping: Dict[str, List[str]]):
+
+        self.phase_speakers.update(mapping)
+
+    def get_speakers_for_phase(self, phase: str) -> List[str]:
+        return list(self.phase_speakers.get(phase, []))
+
+    def current_phase_speakers(self) -> List[str]:
+        return self.get_speakers_for_phase(self.current_phase)
+
+    def get_current_agent_names(self) -> List[str]:
+        
+        ordered: List[str] = []
+        for ph in self.phase_order:
+            for name in self.get_speakers_for_phase(ph):
+                if name not in ordered:
+                    ordered.append(name)
+        return ordered
