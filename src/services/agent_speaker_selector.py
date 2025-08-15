@@ -39,9 +39,4 @@ class SpeakerSelector:
         if len(current_agents) > 1:
             return self._get_next_parallel_agent(self.workflow_controller.current_phase, current_agents, last_speaker)
 
-        # Inject requirements into translator phase
-        if current_agents[0].name == "Code_Translator":
-            requirements = extract_value("Requirements:", group_chat.messages)
-            current_agents[0].update_system_message(f"Input requirements: {requirements}")
-
         return current_agents[0]

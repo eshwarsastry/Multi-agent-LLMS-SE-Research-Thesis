@@ -48,7 +48,6 @@ agent_factory.set_model_temperature("qwen_25_coder_35b_instruct", 0.1)  # Lower 
 requirement_engineer = agent_factory.create_assistant(
     name="Requirement_Engineer",
     system_message=re_prompt_1,
-    tools=[],
     llm_model="qwen_25_coder_35b_instruct"
 )
 
@@ -56,7 +55,6 @@ requirement_engineer = agent_factory.create_assistant(
 code_translator = agent_factory.create_assistant(
     name="Code_Translator",
     system_message=translator_prompt_2,
-    tools=[],
     llm_model="qwen_25_coder_35b_instruct"
 )
 

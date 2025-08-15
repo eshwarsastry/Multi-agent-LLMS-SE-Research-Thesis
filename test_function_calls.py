@@ -34,6 +34,7 @@ CurrencySymbol = Literal["USD", "EUR"]
 
 
 def exchange_rate(base_currency: CurrencySymbol, quote_currency: CurrencySymbol) -> float:
+    print(f"Exchange rate requested: {base_currency} to {quote_currency}")
     if base_currency == quote_currency:
         return 1.0
     elif base_currency == "USD" and quote_currency == "EUR":

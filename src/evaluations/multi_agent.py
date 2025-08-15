@@ -65,7 +65,6 @@ agent_factory.set_model_temperature("qwen_25_coder_35b_instruct", 0.1)  # Lower 
 requirement_engineer = agent_factory.create_assistant(
     name="Requirement_Engineer",
     system_message=re_prompt_1,
-    tools=[],
     llm_model="qwen_25_coder_35b_instruct"
 )
 
@@ -73,7 +72,6 @@ requirement_engineer = agent_factory.create_assistant(
 code_translator = agent_factory.create_assistant(
     name="Code_Translator",
     system_message=translator_prompt_2,
-    tools=[],
     llm_model="qwen_25_coder_35b_instruct"
 )
 
@@ -81,22 +79,19 @@ code_translator = agent_factory.create_assistant(
 code_validator = agent_factory.create_assistant(
     name="Code_Validator",
     system_message=validator_prompt_1,
-    tools=[]
+    llm_model="gpt-5-mini"
 )
 
 # Code Tester (Mistral)
 code_tester = agent_factory.create_assistant(
     name="Code_Tester",
     system_message=code_tester_prompt_1,
-    tools=[],
-    llm_model="llama_31_70b_instruct"
 )
 
 # Critic (Mistral)
 critic = agent_factory.create_assistant(
     name="Critic",
     system_message=critic_prompt_1,
-    tools=[],
     llm_model="qwen_25_coder_35b_instruct"
 )
 
@@ -105,38 +100,23 @@ user_proxy = agent_factory.create_user_proxy(
     name="User_Proxy",
     system_messages=[user_proxy_prompt1],
 )
-# Register function to validator agent.
-@user_proxy.register_for_execution()
-@code_validator.register_for_llm(description="Validate the syntax and semantics of the translated code and check if it compiles.")
+
+# Register the code validation tool for the Code Validator agent
+
 def validate_translated_code(
     translated_code: Annotated[str, "Python program string translated"]
 ) -> Dict:
-    """ Validate the translated Python code to check if it compiles.
-    """
+    # Call your actual validation logic here
     validation_result = validate_python_syntax(
         translated_code=translated_code
     )
     return validation_result
 
-# Register function with Code_Tester agent.
-print(" Registering functions with Code_Tester agent...")
-@user_proxy.register_for_execution()
-@code_tester.register_for_llm(description="Run given test cases on both codes and return pass/fail summary")
-def execute_and_compare_tests(
-    legacy_code: Annotated[str, "C++ program string provided"],
-    translated_code: Annotated[str, "Python program string translated"],
-    cpp_tests: Annotated[str, "C++ test methods"],
-    py_tests: Annotated[str, "Python test methods"],
-) -> Dict:
-    """ Execute test cases on both legacy and translated code, returning pass/fail summary.
-    """ 
-    compute_result = run_and_compare_tests(
-        legacy_code=legacy_code,
-        translated_code=translated_code,
-        cpp_tests=cpp_tests,
-        py_tests=py_tests
-    )
-    return compute_result
+user_proxy.register_for_execution(name="validate_translated_code")(validate_translated_code)
+code_validator.register_for_llm(name="validate_translated_code", 
+                                description="Validate the translated Python code to check if it compiles")(validate_translated_code)
+
+
 # Define phases for the workflow
 # Define workflow phases with retry conditions and optional parallel agents
 PHASES = {
@@ -154,7 +134,7 @@ PHASES = {
     },
     "TESTING": {
         # Example of parallel phase with tester and critic
-        "agents": [code_tester, critic],
+        "agents": [critic],
         "retry_on": ["output mismatch"]
     },
     "REVIEW": {
@@ -169,15 +149,15 @@ PHASES = {
 
 input_cpp_codes = read_json_file('D:/TUK/Master_Thesis/Multi-agent-LLMS-SE-Research-Thesis/src/inputs/input_program.json')
 
-for key, cpp_code in list(input_cpp_codes.items())[:2]:
+for key, cpp_code in list(input_cpp_codes.items())[:1]:
     print(f"Translating C++ code for key: {key}")
 
     workflow_controller = WorkflowController(PHASES, PHASE_ORDER)
     speaker_selector = SpeakerSelector(workflow_controller, requirement_engineer)
     
     groupchat = agent_factory.create_groupchat(
-        agents= [requirement_engineer, code_translator, code_validator, code_tester, critic],
-        speaker_selector=speaker_selector.select_speaker,
+        agents= [requirement_engineer, code_translator, code_validator, critic],
+        speaker_selector="round_robin",
         max_round=10
     )
     

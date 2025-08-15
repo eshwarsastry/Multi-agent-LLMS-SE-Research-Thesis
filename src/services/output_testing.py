@@ -24,7 +24,6 @@ def find_gpp():
     
     for path in possible_paths:
         if shutil.which(path) is not None:
-            print(f" Found g++ at: {path}")
             return path
     
     print(" g++ not found. Please install MinGW or add g++ to PATH")

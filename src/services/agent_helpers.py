@@ -1,13 +1,16 @@
 import json
-import os
 import re
 from datetime import datetime
 
 def extract_value(key, messages):
-    """Helper function to extract values from messages"""
+    """Helper function to extract values from messages using regex matching"""
+    pattern = re.compile(rf"{key}\s*:\s*(.*)", re.IGNORECASE)
     for msg in reversed(messages):
-        if key in msg["content"]:
-            return msg["content"].split(key)[1].strip()
+        # Support both dict and str
+        content = msg["content"] if isinstance(msg, dict) and "content" in msg else str(msg)
+        found = pattern.findall(content)
+        if found:
+            return found[0].strip()
     return ""
 
 def save_output_to_json_file(output_file_path, output_content):
@@ -26,7 +29,8 @@ def extract_relevant_outputs(chat_history, agent_patterns):
             regex_patterns = [regex_patterns]
         matches = []
         for message in chat_history:
-            content = message.get('content', '')
+            # Support both dict and str
+            content = message.get('content', '') if isinstance(message, dict) and 'content' in message else str(message)
             for pattern in regex_patterns:
                 found = re.findall(pattern, content, re.DOTALL | re.IGNORECASE)
                 # Special handling for Code_Translator: extract only the code (second group)

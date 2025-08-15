@@ -16,7 +16,7 @@ class AgentFactory:
         if model_key in self.llm_configs:
             self.llm_configs[model_key]["temperature"] = temperature
 
-    def create_assistant(self, name: str, system_message: str, tools: list, llm_model: str = None):
+    def create_assistant(self, name: str, system_message: str, llm_model: str = None):
         # LLM config- use provided model or default "mistral" Ollama model
         model_key = llm_model or ("qwen_25_coder_35b_instruct" if name == "Code_Translator" else self.default_model)
         config = dict(self.llm_configs[model_key])
@@ -37,11 +37,20 @@ class AgentFactory:
         )
 
     def create_user_proxy(self, name: str, system_messages: list):
+        def _is_term(msg):
+            # Accept dict or str; handle None content safely
+            if isinstance(msg, dict):
+                content = msg.get("content")
+            else:
+                content = msg
+            content = content or ""
+            return str(content).rstrip().endswith("TERMINATE")
+
         return UserProxyAgent(
             name=name,
             system_message=system_messages[0],
-            human_input_mode= 'TERMINATE',
-            is_termination_msg=lambda x: x.get("content", "").rstrip().endswith("TERMINATE"),
+            human_input_mode='TERMINATE',
+            is_termination_msg=_is_term,
             code_execution_config={"work_dir": "agent_code_execution", "use_docker": True},
         )
 

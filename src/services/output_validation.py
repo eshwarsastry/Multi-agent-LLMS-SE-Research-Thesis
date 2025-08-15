@@ -1,23 +1,27 @@
 import ast
 import os
 import tempfile
+from typing import Dict
+from typing_extensions import Annotated
 
 from .output_testing import  find_gpp
 
 GPP_PATH = find_gpp()
 
 
-def validate_python_syntax(code_string: str) -> dict:
+def validate_python_syntax(
+    translated_code: str
+) -> Dict:
+    """ 
+    Validate the translated Python code to check if it compiles.
     """
-    Validates Python code syntax.
-    The Validator_Agent will call this function.
-    """
+
     print(f"\n [PYTHON SYNTAX VALIDATION] Validating Python syntax...")
-    print(f" Code length: {len(code_string)} characters")
-    
+    print(f" Code length: {len(translated_code)} characters")
+
     try:
         # Parse the code to check for syntax errors
-        ast.parse(code_string)
+        ast.parse(translated_code)
         print(f" Python syntax is valid!")
         return {
             "valid": True,
