@@ -1,9 +1,7 @@
 from typing import Dict, List, Any, Optional
-import json
-from pathlib import Path
 
 class SharedWorkspace:
-    """Shared data store for multi-agent communication"""
+    """Shared data space for multi-agent communication"""
     
     def __init__(self, workspace_id: str = "default", agent_access_patterns: Dict[str, List[str]] = None):
         self.workspace_id = workspace_id
@@ -31,14 +29,14 @@ class SharedWorkspace:
     
     def get_context_for_agent(self, agent_name: str, relevant_keys: List[str] = None) -> Dict[str, Any]:
         """Get relevant context for a specific agent"""
-        # If specific keys are provided, use those
+        # Get values by specific keys.
         if relevant_keys:
             return {k: self.data[k]["value"] for k in relevant_keys if k in self.data}
         
-        # Otherwise, use agent-specific access pattern from orchestration layer
+        # Else, use agent-specific access pattern from orchestration layer
         allowed_keys = self.agent_access_patterns.get(agent_name, list(self.data.keys()))
         
-        # User_Proxy gets access to everything by default
+        # User_Proxy can access everything by default
         if agent_name == "User_Proxy" and agent_name not in self.agent_access_patterns:
             allowed_keys = list(self.data.keys())
         
