@@ -1,16 +1,5 @@
 import json
 import re
-from datetime import datetime
-
-def extract_value(key, messages):
-    """Helper function to extract values from messages using regex matching"""
-    pattern = re.compile(rf"{key}\s*:\s*(.*)", re.IGNORECASE)
-    for msg in reversed(messages):
-        content = msg["content"] if isinstance(msg, dict) and "content" in msg else str(msg)
-        found = pattern.findall(content)
-        if found:
-            return found[0].strip()
-    return ""
 
 def extract_relevant_outputs(chat_history, agent_patterns):
     """

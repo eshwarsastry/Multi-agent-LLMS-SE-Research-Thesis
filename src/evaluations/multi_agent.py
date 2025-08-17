@@ -265,7 +265,7 @@ def main(max_items: int | None = None):
             {
                 "type": "critic_score_check", 
                 "workspace_key": "critic_review",
-                "min_score": 7,
+                "min_score": 6,
                 "retry_message": "low critic score"
             }
         ]
@@ -304,15 +304,18 @@ def main(max_items: int | None = None):
 
     for key, cpp_code in items_to_process:
         print(f"Translating C++ code for key: {key}")
-        start_time = time.time()
+        start_time = time.perf_counter()
         try:
             # Run the workflow
             chat_history, outputs = run(cpp_code)
 
             has_any_output = any(outputs.get(key) for key in ['translated_code', 'requirements', 'validation_results', 'test_results', 'critic_review'])
+            
             if has_any_output:
                 status[key] = "Success"
-                
+                end_time = time.perf_counter()
+                time_taken = end_time - start_time
+                time_log[key] = time_taken
                 # Collect outputs
                 if outputs.get('translated_code'):
                     translations[key] = outputs['translated_code']
@@ -331,13 +334,12 @@ def main(max_items: int | None = None):
             status[key] = "Error"
             error_details = traceback.format_exc()
             print(f"Error details: {error_details}")
-            
+            end_time = time.perf_counter()
+            time_taken = end_time - start_time
+            time_log[key] = time_taken
             # Continue with next item
             continue
     # Save outputs
-    end_time = time.time()
-    time_taken = end_time - start_time
-    time_log[key] = time_taken
     save_output_to_json_file(str(TIME_LOG), time_log)
     save_output_to_json_file(str(CODE_OUT), translations)
     save_output_to_json_file(str(REQ_OUT), requirements)

@@ -58,13 +58,13 @@ input_cpp_codes = read_json_file(str(INPUT_PATH))
 
 for key, cpp_code in list(input_cpp_codes.items()):
     print(f"Translating C++ code for key: {key}")
-    start_time = time.time()
+    start_time = time.perf_counter()
     chat_result = user_proxy.initiate_chat(
     code_translator,
     message=user_proxy_prompt + cpp_code,
     max_turns=1)
     output = extract_relevant_outputs(chat_result.chat_history, agent_patterns)
-    end_time = time.time()
+    end_time = time.perf_counter()
     for agent in agent_patterns:
         if output.get(agent):
             if agent == "Code_Translator":

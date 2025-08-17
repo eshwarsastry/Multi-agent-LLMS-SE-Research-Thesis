@@ -1,8 +1,5 @@
 # User proxy prompts and messages
-user_proxy_message = """
-You are the User Proxy Agent.
-You will take execute the execute_and_compare_tests tool and return the results to the Code Tester.
-"""
+user_proxy_message = """You are the User Proxy Agent."""
 user_proxy_prompt = "Translate the following C++ program to python code: "
 
 # Requirements Engineer prompts

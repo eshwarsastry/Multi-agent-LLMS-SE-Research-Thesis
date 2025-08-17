@@ -119,7 +119,7 @@ input_cpp_codes = read_json_file(str(INPUT_PATH))
 # Single group chat for RE -> Translator process
 for key, cpp_code in list(input_cpp_codes.items()):
     print(f"Processing key: {key}")
-    start_time = time.time()
+    start_time = time.perf_counter()
 
     groupchat = agent_factory.create_groupchat(
         agents=[requirement_engineer, code_translator],
@@ -134,7 +134,7 @@ for key, cpp_code in list(input_cpp_codes.items()):
     output = extract_relevant_outputs(groupchat.messages, agent_patterns)
     req = output.get("Requirement_Engineer", [""])[0] if output.get("Requirement_Engineer") else ""
     code = output.get("Code_Translator", [""])[0] if output.get("Code_Translator") else ""
-    end_time = time.time()
+    end_time = time.perf_counter()
     requirements[key] = req
     translations[key] = code
     save_output_to_json_file(str(CODE_OUT), translations)
