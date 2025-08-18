@@ -13,7 +13,7 @@ def evaluate_codebleu_for_pairs(ground_truth, generated_code, lang="python", wei
 			results[key] = score
 	return results
 
-def print_codebleu_results(results):
+def compute_and_print_codebleu_results(results):
 	"""
 	Prints CodeBLEU results for each key and the average CodeBLEU value.
 	"""
@@ -28,5 +28,18 @@ def print_codebleu_results(results):
 			count += 1
 	avg_score = total_score / count if count > 0 else 0
 	print(f"\nAverage CodeBLEU: {avg_score}") 
+	return avg_score
 
-
+def evaluate_time_logs(time_logs):
+	"""
+	Evaluates and compares time logs for the given 2 agent frameworks to compare.
+	"""
+	total_time = 0
+	count = 0
+	for key, time_value in time_logs.items():
+		print(f"{key}: Time = {time_value}")
+		total_time += time_value
+		count += 1
+	avg_time = total_time / count if count > 0 else 0
+	print(f"Average time for translation is {avg_time}")
+	return avg_time

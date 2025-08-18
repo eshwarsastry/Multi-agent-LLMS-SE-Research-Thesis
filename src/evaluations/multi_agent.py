@@ -349,4 +349,4 @@ def main(max_items: int | None = None):
     save_output_to_json_file(str(STATUS_OUT), status)
 
 if __name__ == '__main__':
-    main(2)
+    main(10)
