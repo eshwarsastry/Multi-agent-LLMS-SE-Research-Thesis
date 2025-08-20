@@ -19,15 +19,12 @@ def compute_and_print_codebleu_results(results):
 	"""
 	total_score = 0
 	count = 0
-	print("CodeBLEU Results:")
 	for key, score_dict in results.items():
 		codebleu_score = score_dict.get('codebleu', score_dict if isinstance(score_dict, float) else None)
-		print(f"{key}: CodeBLEU = {codebleu_score}")
 		if codebleu_score is not None:
 			total_score += codebleu_score
 			count += 1
 	avg_score = total_score / count if count > 0 else 0
-	print(f"\nAverage CodeBLEU: {avg_score}") 
 	return avg_score
 
 def evaluate_time_logs(time_logs):
@@ -41,5 +38,4 @@ def evaluate_time_logs(time_logs):
 		total_time += time_value
 		count += 1
 	avg_time = total_time / count if count > 0 else 0
-	print(f"Average time for translation is {avg_time}")
 	return avg_time
