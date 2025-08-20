@@ -64,7 +64,7 @@ def _execute_command(command, input_data=""):
         success = (returncode == 0)
         
         execution_time = time.time() - start_time
-        print(f"  Execution time: {execution_time:.2f} seconds")
+        print(f" Execution time: {execution_time:.2f} seconds")
         print(f" Output: {repr(stdout)}")
         print(f" Errors: {repr(stderr)}")
         print(f" Return code: {returncode}")

@@ -19,6 +19,8 @@ def validate_python_syntax(
     try:
         # Parse the code to check for syntax errors
         ast.parse(translated_code)
+        # Try compiling the code to bytecode
+        compile(translated_code, "<string>", "exec")
         print(f" Python syntax is valid!")
         return {
             "valid": True,

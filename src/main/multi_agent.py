@@ -7,7 +7,6 @@ import traceback
 
 # Load all required service dependencies.
 from ..services.agent_helpers import read_json_file, save_output_to_json_file
-from ..services.result_evaluation import evaluate_codebleu_for_pairs, print_codebleu_results
 from ..services.config_loader import load_config
 from ..services.agent_factory import AgentFactory
 from ..services.output_validation import validate_python_syntax
@@ -36,7 +35,7 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 CODE_OUT = OUTPUT_DIR / 'generated_python_code.json'
 REQ_OUT = OUTPUT_DIR / 'generated_requirements.json'
-VALID_OUT = OUTPUT_DIR / 'generated_validator.json'
+VALID_OUT = OUTPUT_DIR / 'validator_report.json'
 TEST_OUT = OUTPUT_DIR / 'generated_tests.json'
 CRITIC_OUT = OUTPUT_DIR / 'generated_critic.json'
 STATUS_OUT = OUTPUT_DIR / 'process_status.json'
@@ -173,14 +172,14 @@ def main(max_items: int | None = None):
         "Requirement_Engineer": r"Title:\s*.*",
         "Code_Translator": r"```(python|py|python3)\n(.*?)```",
         "Code_Validator": r"(Validation Summary:?\s*.*)",
-        "Code_Tester": r"Test Summary:\s*.*",
-        "Critic": r"(Score:?\s*\d+|Critique:?\s*.*|Suggestions?:?\s*.*)",
+        "Code_Tester": r"```\n(text|test_results)*\n(.*?)```",
+        "Critic": r"```(text|review_block)\n(.*?)```",
     }
 
     # Agent access patterns for shared workspace
     agent_access_patterns = {
         "Requirement_Engineer": ["original_cpp_code"],
-        "Code_Translator": ["requirements", "original_cpp_code", "feedback"],
+        "Code_Translator": ["requirements", "original_cpp_code", "critic_review"],
         "Code_Validator": ["translated_code"],
         "Code_Tester": ["original_cpp_code", "translated_code", "requirements"],
         "Critic": ["translated_code", "test_results", "validation_results"],
@@ -199,11 +198,12 @@ def main(max_items: int | None = None):
         },
         "TRANSLATION": {
             "default_agent": "Code_Translator", 
-            "context_keys": ["requirements", "original_cpp_code"],
+            "context_keys": ["requirements", "original_cpp_code", "critic_review"],
             "prompt_template": translator_prompt,
             "prompt_kwargs": lambda ctx: {
                 "requirements": ctx.get("requirements", ""),
-                "cpp_code": ctx.get("original_cpp_code", "")
+                "cpp_code": ctx.get("original_cpp_code", ""),
+                "critic_review": ctx.get("critic_review", "")
             },
             "output_key": "translated_code",
             "max_turns": 1
@@ -349,4 +349,4 @@ def main(max_items: int | None = None):
     save_output_to_json_file(str(STATUS_OUT), status)
 
 if __name__ == '__main__':
-    main(10)
+    main()
