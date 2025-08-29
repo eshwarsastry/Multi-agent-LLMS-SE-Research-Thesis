@@ -13,7 +13,7 @@ def create_custom_workflow(
     agent_access_patterns: Dict[str, List[str]],
     phase_configs: Dict[str, Dict],
     retry_config: Dict = None
-):
+    ):
     """Create a custom multi-agent workflow with pure execution logic"""
     
     # Default retry config if none provided
@@ -30,16 +30,16 @@ def create_custom_workflow(
         phase_order=phase_order
     )
 
-    def run_fn(cpp_code: str) -> Tuple[List[dict], Dict[str, str]]:
+    def run_fn(cpp_code: str, key: str = "default") -> Tuple[List[dict], Dict[str, str]]:
         """Core workflow execution logic"""
         
         # Initialize shared workspace
         workspace = SharedWorkspace("translation_workflow", agent_access_patterns)
         workspace.write("original_cpp_code", cpp_code, "System")
-        
+        workspace.write("program_key", key, "System")
         chat_history: List[dict] = []
-        max_retries = retry_config.get("max_retries", 3)
-        attempt = 0
+        max_retries = retry_config.get("max_retries", 1)
+        attempt = 1
 
         while attempt <= max_retries:
             # Execute all configured phases

@@ -37,6 +37,19 @@ Example Output:
 Follow these requirements: \n{requirements} \n\nC++ code:\n{cpp_code}\nCritic reviews (If any):\n{critic_review}
 """
 
+translator_prompt_1 = """
+Your task is to translate the following C++ code to Python and return code in a fenced python block. 
+Use the requirements provided by the Requirement Engineer to guide your translation.
+USE THE CRITIC OBSERVATIONS TO MODIFY THE TRANSLATION.
+Use the best coding practices during translation.
+DO NOT GENERATE ANY TESTS. JUST TRANSLATE.
+Example Output:
+```python
+(Python program code)
+```
+Follow these requirements: \n{requirements} \n\nC++ code:\n{cpp_code}\nModify previous translation:\n{python_code} \nas per Tester Summary(If any):\n{test_results}
+"""
+
 # Validator prompt and message
 validator_message = """You are a Code Validator."""
 
@@ -87,7 +100,27 @@ Test Summary:
 Test the following translated Python code for correctness. C++ code:\n{cpp_code}\n\nPython code:\n{python_code}
 """
 
+code_tester_prompt_db_tests = """ 
+Your task is to test the translated code and provide a summary of the test report. 
+YOU WILL THEN EXECUTE THE TEST METHODS ON THE TRANSLATED CODE BY CALLING THE TOOL 'execute_and_compare_tests'
+-EXECUTE: RUN TESTS by calling the tool 'execute_and_compare_tests'
+-RETURN: TEST RESULTS
 
+You have access to the tool 'execute_and_compare_tests' which takes the following inputs:
+- translated_code: The translated Python program as a string.
+- program_key: The key for the program being tested.
+ONLY PROCEED TO SUMMARY IF YOU HAVE THE RESULTS OF THE execute_and_compare_tests TOOL.
+RETURN THE OUTPUT IN A FENCED TEXT BLOCK AS FOLLOWS-
+Example Output:
+```test_results
+Test Summary:
+-TOTAL NUMBER OF TESTS EXECUTED
+-PASS/FAIL COUNT FOR EACH CODE
+-SUMMARY OF ERROR MESSAGE IF ANY
+```
+
+Test the following translated Python code for correctness. Program key: {program_key} \n Python code:\n{python_code}
+"""
 
 # Critic prompt and message
 critic_message = """You are the Code Reviewer."""
@@ -110,5 +143,5 @@ Detailed Scores:
 - Aesthetics: <X>/10 - <Brief explanation>
 ```
 
-Review the following translated code:\n{python_code} and the test results:\n{test_results}
+Review the following translated code:\n{python_code} and the test results (if provided):\n{test_results}
  """

@@ -1,5 +1,6 @@
 import subprocess
 import os
+import sys
 import tempfile
 import time
 import uuid
@@ -297,7 +298,7 @@ if __name__ == "__main__":
 
         py_res = run_python_code(py_full)  # expects dict with stdout/stderr/success/returncode/log
         py_ok = py_res.get("success", False) and py_res.get("returncode", 1) == 0
-
+        
         # Compare success + stdout exactly (when both ran)
         outputs_match = (
             cpp_ok and py_ok and
@@ -329,5 +330,75 @@ if __name__ == "__main__":
         "details": results,
     }
     return summary
+
+def run_python_tests_from_dataset(translated_code: str, py_tests: str) -> dict:
+    """
+    Runs ALL tests from ClassEval dataset against the translated code and captures output.
+    Adds error handling for unexpected scenarios.
+    """
+    py_driver = """
+import unittest, sys
+
+if __name__ == "__main__":
+    loader = unittest.defaultTestLoader
+    suite = loader.loadTestsFromModule(sys.modules["__main__"])
+    runner = unittest.TextTestRunner(verbosity=2)
+    result = runner.run(suite)
+    print("TEST_PASS" if result.wasSuccessful() else "TEST_FAIL")
+"""
+
+    py_full = "\n".join([translated_code, py_tests, py_driver])
+
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".py", mode="w") as temp:
+            temp.write(py_full)
+            temp_path = temp.name
+
+        try:
+            proc = subprocess.run(
+                [sys.executable, temp_path],
+                capture_output=True,
+                text=True,
+                timeout=default_timeout
+            )
+
+            stdout = proc.stdout.strip()
+            stderr = proc.stderr.strip()
+            success = proc.returncode == 0
+
+            return {
+                "success": success,
+                "stdout": stdout,
+                "stderr": stderr,
+                "result": "PASS" if "TEST_PASS" in stdout else "FAIL"
+            }
+
+        except subprocess.TimeoutExpired:
+            return {
+                "success": False,
+                "stdout": "",
+                "stderr": f"TimeoutExpired: Test execution exceeded {default_timeout} seconds.",
+                "result": "ERROR"
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "stdout": "",
+                "stderr": f"Unexpected error during test execution: {e}",
+                "result": "ERROR"
+            }
+        finally:
+            try:
+                os.unlink(temp_path)
+            except Exception:
+                pass
+
+    except Exception as e:
+        return {
+            "success": False,
+            "stdout": "",
+            "stderr": f"Unexpected error preparing test file: {e}",
+            "result": "ERROR"
+        }
     
 

@@ -13,20 +13,6 @@ def evaluate_codebleu_for_pairs(ground_truth, generated_code, lang="python", wei
 			results[key] = score
 	return results
 
-def compute_and_print_codebleu_results(results):
-	"""
-	Prints CodeBLEU results for each key and the average CodeBLEU value.
-	"""
-	total_score = 0
-	count = 0
-	for key, score_dict in results.items():
-		codebleu_score = score_dict.get('codebleu', score_dict if isinstance(score_dict, float) else None)
-		if codebleu_score is not None:
-			total_score += codebleu_score
-			count += 1
-	avg_score = total_score / count if count > 0 else 0
-	return avg_score
-
 def evaluate_time_logs(time_logs):
 	"""
 	Evaluates and compares time logs for the given 2 agent frameworks to compare.

@@ -40,6 +40,25 @@ class RetryConditionChecker:
         return score is not None and score < min_score
 
     @staticmethod
+    def tester_summary_check(workspace, condition: Dict) -> bool:
+        """Check tester summary retry condition"""
+        tester_data = workspace.read(condition.get("workspace_key", "test_results"))
+
+        if not tester_data:
+            return False
+
+        tester_text = str(tester_data).lower()
+    
+        # Check for test failure indicators
+        failure_patterns = condition.get("failure_patterns", ["fail", "error"])
+    
+        for pattern in failure_patterns:
+            if pattern.lower() in tester_text:
+                return True  # Indicates need to send to translator for retry
+    
+        return False
+
+    @staticmethod
     def custom_check(workspace, condition: Dict) -> bool:
         """Handle custom retry logic"""
         custom_check = condition.get("check_function")
